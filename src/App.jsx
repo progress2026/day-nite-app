@@ -368,10 +368,18 @@ export default function DispatchLog() {
     setScanError(null);
     const id = editingId || uid();
     const existing = editingId ? records.find((r) => r.id === editingId) : null;
+
+    const rawWo = (form.workOrder || "").trim();
+    const workOrder = /^\d+$/.test(rawWo) ? "WO-" + rawWo : rawWo;
+
+    const rawCustomer = (form.customer || "").trim();
+    const known = customers.find((c) => c.toLowerCase() === rawCustomer.toLowerCase());
+    const customer = known || rawCustomer;
+
     const record = {
       id,
-      workOrder: form.workOrder || "",
-      customer: form.customer || "",
+      workOrder,
+      customer,
       lineItems: hasItems ? cleanLines : [],
       destination: form.destination || "",
       date: form.date || "",
@@ -500,6 +508,7 @@ export default function DispatchLog() {
           <FormView
             form={form}
             setForm={setForm}
+            customers={customers}
             imagePreview={imagePreview}
             saving={saving}
             error={scanError}
@@ -768,7 +777,7 @@ function Field({ label, icon, children }) {
   );
 }
 
-function FormView({ form, setForm, imagePreview, saving, error, notice, isEdit, onSave, onCancel }) {
+function FormView({ form, setForm, customers = [], imagePreview, saving, error, notice, isEdit, onSave, onCancel }) {
   function update(key, value) {
     setForm((f) => ({ ...f, [key]: value }));
   }
@@ -882,7 +891,14 @@ function FormView({ form, setForm, imagePreview, saving, error, notice, isEdit, 
             value={form.customer}
             onChange={(e) => update("customer", e.target.value)}
             placeholder="e.g. Tim Hortons"
+            list="known-customers"
+            autoComplete="off"
           />
+          <datalist id="known-customers">
+            {customers.map((c) => (
+              <option key={c} value={c} />
+            ))}
+          </datalist>
         </Field>
 
         <Field label="Destination" icon={<MapPin size={13} color="#7C8A93" />}>
