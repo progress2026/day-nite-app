@@ -355,7 +355,7 @@ export default function DispatchLog() {
     setView("form");
   }
 
-  function saveRecord() {
+  async function saveRecord() {
     const cleanLines = form.lineItems
       .map((l) => ({ qty: (l.qty || "").trim(), description: (l.description || "").trim() }))
       .filter((l) => l.qty || l.description);
@@ -365,32 +365,38 @@ export default function DispatchLog() {
       return;
     }
     setSaving(true);
+    setScanError(null);
     const id = editingId || uid();
     const existing = editingId ? records.find((r) => r.id === editingId) : null;
     const record = {
       id,
-      workOrder: form.workOrder,
-      customer: form.customer,
+      workOrder: form.workOrder || "",
+      customer: form.customer || "",
       lineItems: hasItems ? cleanLines : [],
-      destination: form.destination,
-      date: form.date,
-      carrier: form.carrier,
-      trackingNumber: form.trackingNumber,
-      loggedBy: form.loggedBy,
-      notes: form.notes,
+      destination: form.destination || "",
+      date: form.date || "",
+      carrier: form.carrier || "",
+      trackingNumber: form.trackingNumber || "",
+      loggedBy: form.loggedBy || "",
+      notes: form.notes || "",
       checklist: Array.isArray(form.checklist) ? form.checklist : null,
       createdAt: existing?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
 
-    if (form.loggedBy.trim()) setLastLoggedBy(form.loggedBy.trim());
-    setDoc(doc(db, SHIPMENTS, id), record).catch((e) => {
-      console.error("Save failed:", e);
-    });
+    const safe = JSON.parse(JSON.stringify(record));
 
-    resetScan();
-    setView("list");
-    setSaving(false);
+    try {
+      await setDoc(doc(db, SHIPMENTS, id), safe);
+      if (form.loggedBy.trim()) setLastLoggedBy(form.loggedBy.trim());
+      resetScan();
+      setView("list");
+    } catch (e) {
+      console.error("Save failed:", e);
+      setScanError("Couldn't save: " + (e?.code || e?.message || "unknown error"));
+    } finally {
+      setSaving(false);
+    }
   }
 
   function deleteRecord(id) {
